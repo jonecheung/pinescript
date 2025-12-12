@@ -1,0 +1,37 @@
+# ============================================
+# Algo Trading Bot - Requirements
+# Python 3.9+
+# ============================================
+
+# Core Data & Analysis
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Market Data Sources
+yfinance>=0.2.28
+
+# Technical Indicators
+pandas-ta>=0.3.14b
+
+# Backtesting Framework
+backtrader>=1.9.78.123
+
+# Machine Learning & Optimization (Optiver-inspired)
+scikit-learn>=1.3.0
+
+# Visualization
+matplotlib>=3.7.0
+plotly>=5.14.0
+seaborn>=0.12.0
+
+# GUI (Optional - for risk calculator)
+streamlit>=1.22.0
+
+# Utilities
+pyyaml>=6.0
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+
+# API Support (for Oanda/other data sources)
+requests>=2.31.0
+

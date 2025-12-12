@@ -1,0 +1,421 @@
+# ============================================
+# Algo Trading Bot - Configuration
+# FUTURES TRADING (MES, MNQ, MGC)
+# FundedHive Prop Firm Rules
+# ============================================
+
+# Account Settings
+account:
+  starting_balance: 50000  # $50K starting capital
+  currency: USD
+  scale_up_threshold: 0.10  # Scale up after 10% profit
+  
+# Prop Firm Rules (FundedHive)
+prop_firm:
+  name: FundedHive
+  platform: cTrader
+  
+  # HARD LIMITS (Never exceed these!)
+  limits:
+    max_per_trade_loss_pct: 0.03   # 3% = $1,500 max
+    max_daily_loss_pct: 0.05       # 5% = $2,500 max
+    max_overall_loss_pct: 0.10     # 10% = $5,000 max
+    weekend_holding: false          # NOT allowed when funded
+    news_trading: true              # Allowed
+    consistency_rule: false         # Not required
+  
+  # Challenge Requirements
+  challenge:
+    phase1:
+      profit_target: 0.08  # 8%
+      profitable_days: 3
+    phase2:
+      profit_target: 0.06  # 6%
+      profitable_days: 3
+    funded:
+      profit_split: 0.80   # 80% to trader
+
+# Data Settings - FUTURES
+data:
+  # Primary Instruments (Micro Futures)
+  instruments:
+    # MES - Primary Focus (40%)
+    - symbol: MES1!           # TradingView symbol
+      name: Micro E-mini S&P 500
+      yfinance_symbol: ES=F   # For historical data
+      type: equity_index
+      weight: 0.40            # 40% of trades
+      contract_value: 5       # $5 per point
+      tick_size: 0.25         # 0.25 points
+      tick_value: 1.25        # $1.25 per tick
+      typical_atr: 30         # Typical ATR in points
+      margin_requirement: 1320  # Approximate (check broker)
+      
+    # MNQ - Primary Focus (30%)
+    - symbol: MNQ1!
+      name: Micro NASDAQ-100
+      yfinance_symbol: NQ=F
+      type: equity_index
+      weight: 0.30            # 30% of trades
+      contract_value: 2       # $2 per point
+      tick_size: 0.25
+      tick_value: 0.50        # $0.50 per tick
+      typical_atr: 50         # Higher volatility
+      margin_requirement: 1650
+      
+    # MGC - Secondary (30%)
+    - symbol: MGC1!
+      name: Micro Gold
+      yfinance_symbol: GC=F
+      type: commodity
+      weight: 0.30            # 30% of trades (diversification)
+      contract_value: 1       # $1 per point (10 oz)
+      tick_size: 0.10
+      tick_value: 0.10
+      typical_atr: 20         # In dollars
+      margin_requirement: 700
+  
+  # Timeframes for Analysis
+  timeframes:
+    - M15   # Entry timeframe
+    - H1    # Structure timeframe
+    - H4    # Bias timeframe
+  
+  # Historical Data Period
+  period: 2y  # 2 years of data for backtesting
+  
+  # Data Source Priority
+  source: yfinance  # Primary: yfinance (free)
+  # Alternative: tradingview, ctrader_export
+
+# Trading Sessions (KILL ZONES ONLY!)
+sessions:
+  # London Kill Zone
+  london:
+    enabled: true
+    start: "02:00"     # 2 AM EST
+    end: "05:00"       # 5 AM EST
+    timezone: EST
+    description: "European open, Asian liquidity sweep"
+    risk_level: conservative  # 1% per trade
+    
+  # New York Kill Zone (PRIMARY)
+  new_york:
+    enabled: true
+    start: "07:00"     # 7 AM EST
+    end: "10:00"       # 10 AM EST
+    timezone: EST
+    description: "US open, highest volume"
+    risk_level: moderate      # 1-1.5% per trade
+    primary_instruments: [MES1!, MNQ1!]  # Focus on US indices
+  
+  # Asian Session
+  asian:
+    enabled: false     # DON'T TRADE (low probability)
+    
+  # Outside Kill Zones
+  other_times:
+    enabled: false     # DON'T TRADE
+    exceptions:
+      - major_news_events
+      - strong_trend_continuation
+
+# Strategy Settings
+strategy:
+  # ICT Strategy Parameters
+  ict:
+    enabled: true
+    min_confidence: 70  # Minimum score to trade
+    
+    # Order Blocks
+    order_block:
+      min_candles: 3
+      volume_threshold: 1.5  # 1.5x average volume
+      lookback_period: 50
+    
+    # Fair Value Gaps (FVG)
+    fvg:
+      min_gap_size: 10  # In points (adjusted for futures)
+      min_gap_percent: 0.002  # 0.2%
+    
+    # Market Structure
+    structure:
+      swing_lookback: 10
+      bos_threshold: 5   # Points for Break of Structure
+    
+    # Liquidity Sweeps
+    liquidity:
+      sweep_lookback: 20
+      wick_ratio: 0.6    # 60% wick vs body
+  
+  # Mean Reversion Strategy
+  mean_reversion:
+    enabled: true
+    min_confidence: 70
+    
+    # RSI Settings
+    rsi:
+      period: 14
+      oversold: 30
+      overbought: 70
+      divergence_lookback: 50
+    
+    # Bollinger Bands
+    bollinger:
+      period: 20
+      std_dev: 2.5
+      touch_threshold: 0.995  # 99.5% to edge
+    
+    # Z-Score
+    zscore:
+      period: 50
+      extreme_threshold: 2.0
+  
+  # Ensemble Settings
+  ensemble:
+    enabled: true
+    min_ensemble_score: 75  # Combined score to trade
+    
+    # Weights by Market Regime
+    weights:
+      trending:    # ADX > 25
+        ict: 0.70
+        mean_reversion: 0.30
+      ranging:     # ADX < 20
+        ict: 0.30
+        mean_reversion: 0.70
+      uncertain:   # ADX 20-25
+        ict: 0.50
+        mean_reversion: 0.50
+
+# Market Regime Detection
+market_regime:
+  # ADX for Trend Detection
+  adx:
+    period: 14
+    trending_threshold: 25
+    ranging_threshold: 20
+  
+  # ATR for Volatility
+  volatility:
+    atr_period: 14
+    lookback: 50
+    high_vol_threshold: 1.5  # 1.5x average ATR
+    low_vol_threshold: 0.7   # 0.7x average ATR
+    
+  # Clustering (Optiver-inspired)
+  clustering:
+    enabled: true
+    n_clusters: 5
+    features:
+      - atr
+      - adx
+      - volume_ratio
+      - time_of_day
+
+# Risk Management (CRITICAL!)
+risk:
+  # Our Conservative Approach (below prop firm limits)
+  position_sizing:
+    conservative: 0.01   # 1% = $500 risk
+    moderate: 0.015      # 1.5% = $750 risk
+    aggressive: 0.02     # 2% = $1,000 risk (max we'll use)
+    
+  # ATR-Based Stops
+  atr:
+    period: 14
+    stop_multiplier: 2.0    # Stop at 2×ATR
+    tp_multiplier: 3.0      # Target at 3×ATR (1:1.5 RRR minimum)
+  
+  # Daily Risk Management
+  daily:
+    max_trades: 3           # Max 3 trades per day
+    max_risk_pct: 0.04      # Max 4% daily risk (buffer below 5%)
+    stop_trading_loss: 0.04 # Stop if lose 4% in one day
+    
+  # Trade Management
+  trade:
+    min_risk_reward: 1.5    # Minimum 1.5:1 RRR
+    partial_take_profit:
+      enabled: true
+      first_target: 0.50    # Take 50% at 1.5×ATR
+      second_target: 0.50   # Take 50% at 3×ATR
+    trailing_stop:
+      enabled: true
+      activation: 2.0       # Activate at 2×ATR profit
+      distance: 1.0         # Trail at 1×ATR
+  
+  # Position Sizing Examples (for reference)
+  examples:
+    mes:
+      typical_atr: 30
+      stop_distance: 60     # 2×ATR = 60 points
+      contract_value: 5     # $5/point
+      risk_per_contract: 300  # 60 × $5
+      # At 1% risk ($500): 1 contract
+      # At 1.5% risk ($750): 2 contracts
+      # At 2% risk ($1000): 3 contracts
+    
+    mnq:
+      typical_atr: 50
+      stop_distance: 100
+      contract_value: 2
+      risk_per_contract: 200
+      # At 1% risk ($500): 2 contracts
+      # At 1.5% risk ($750): 3 contracts
+      # At 2% risk ($1000): 5 contracts
+    
+    mgc:
+      typical_atr: 20
+      stop_distance: 40
+      contract_value: 1
+      risk_per_contract: 40
+      # At 1% risk ($500): 12 contracts
+      # At 1.5% risk ($750): 18 contracts
+      # At 2% risk ($1000): 25 contracts
+
+# Backtesting Settings
+backtesting:
+  # Initial Capital
+  initial_capital: 50000
+  
+  # Costs (Futures-specific)
+  commission:
+    mes: 0.62  # $0.62 per contract per side
+    mnq: 0.62
+    mgc: 0.62
+  
+  slippage:
+    points: 1  # 1 point slippage estimate
+  
+  # Walk-Forward Optimization
+  walk_forward:
+    enabled: true
+    train_period: 180  # Days
+    test_period: 30
+    step_size: 30
+  
+  # Session Filtering (IMPORTANT!)
+  session_filter:
+    enabled: true
+    only_trade_sessions:
+      - london
+      - new_york
+  
+  # Performance Metrics
+  metrics:
+    - sharpe_ratio
+    - max_drawdown
+    - win_rate
+    - profit_factor
+    - total_trades
+    - average_points_per_trade
+    - profit_per_session
+
+# Feature Engineering
+features:
+  # Price Features
+  price:
+    ma_periods: [5, 20, 50, 200]
+    ema_periods: [9, 21, 55]
+    roc_periods: [5, 10, 20]
+    
+  # Volume Features  
+  volume:
+    ma_period: 20
+    spike_threshold: 2.0
+    
+  # Volatility Features
+  volatility:
+    atr_periods: [14, 20, 50]
+    bb_period: 20
+    bb_std: 2.5
+    
+  # Time Features (Session-based)
+  time:
+    session_encoding: true
+    day_of_week: true
+    time_of_day: true
+    kill_zone_indicator: true
+
+# Logging
+logging:
+  level: INFO
+  file: logs/trading_bot.log
+  console: true
+  trade_log: logs/trades.csv
+  
+  # What to Log
+  log_events:
+    - signals
+    - entries
+    - exits
+    - risk_checks
+    - prop_firm_limit_checks
+    - session_changes
+
+# Notifications (Optional)
+notifications:
+  enabled: false
+  
+  # Email
+  email:
+    enabled: false
+    smtp_server: ""
+    smtp_port: 587
+    from_email: ""
+    to_email: ""
+    password: ""  # Use .env
+  
+  # Telegram
+  telegram:
+    enabled: false
+    bot_token: ""  # Use .env
+    chat_id: ""
+    
+  # Discord Webhook
+  discord:
+    enabled: false
+    webhook_url: ""  # Use .env
+
+# Development/Testing
+development:
+  debug_mode: false
+  test_mode: false
+  test_data_size: 1000
+  
+  # Plotting
+  save_plots: true
+  plot_directory: results/plots/
+  plot_trades: true
+  plot_equity_curve: true
+  
+  # Performance
+  use_multiprocessing: false
+  n_jobs: 4
+  cache_features: true
+  cache_directory: .cache/
+
+# Notes & Reminders
+# ============================================
+# CRITICAL RULES:
+# 1. NEVER exceed 3% risk per trade ($1,500)
+# 2. NEVER exceed 5% daily loss ($2,500)
+# 3. NEVER hold over weekend when funded
+# 4. ONLY trade during kill zones (London 2-5am, NY 7-10am)
+# 5. ALWAYS check position size before entry
+# 
+# INSTRUMENT WEIGHTING:
+# - MES: 40% (most stable)
+# - MNQ: 30% (higher vol)
+# - MGC: 30% (diversification)
+#
+# SESSION PREFERENCE:
+# - London: Conservative (1% risk)
+# - NY: Primary focus (1-1.5% risk)
+#
+# SCALING PLAN:
+# - Start at $50K
+# - Scale up after consistent 10% profit
+# - Never risk more than 2% even at higher capital
+# ============================================
